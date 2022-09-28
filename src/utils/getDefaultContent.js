@@ -18,7 +18,8 @@ export async function getDefaultContent() {
         {color: "lime", shade:"600", ref: "Leaf"} 
         {color: "blue", shade:"800", ref: "Sea"} 
         {color: "cyan", shade:"200", ref: "Sky"}
-        {color: "orange", shade:"400", ref: "SUN"} as item>
+        {color: "orange", shade:"400", ref: "SUN"} 
+        as item>
       <li class="text-{item.color}-{item.shade}">
         {item.ref} is {item.color} 
       </li>
