@@ -22,6 +22,7 @@ import { toValidTailwindVersion } from '../utils/toValidTailwindVersion'
 import Head from 'next/head'
 import { getDefaultContent } from '../utils/getDefaultContent'
 import { extractCss } from '../utils/extractCss'
+import { tmpl } from 'riot-tmpl'
 
 const HEADER_HEIGHT = 60 - 1
 const TAB_BAR_HEIGHT = 40
@@ -191,15 +192,176 @@ function Pen({
   }
 
   const compile = useCallback(debounce(compileNow, 200), [inject])
-
+  const parseMapParams = (str) => {
+    console.log(str)
+    let temp = ''
+    let currly_braces_depth = 0
+    let inside_quote = false
+    let isKey = false
+    let canBeKey = true
+    let variable_name = ''
+    let index_name = ''
+    let isCommaDONE = false
+    if (str) {
+      let clp = str
+      const [front, back] = clp.split(' as ')
+      if (back.includes(',')) {
+        ;[variable_name, index_name] = back.split(',')
+      } else {
+        variable_name = back
+      }
+      const chars = front.split('')
+      let i = 0
+      while (i < chars.length) {
+        const char = chars[i]
+        if (char === '{') {
+          currly_braces_depth++
+          isCommaDONE = false
+        } else if (char === '"') {
+          inside_quote = !inside_quote
+          isCommaDONE = false
+        } else if (char === '}') {
+          currly_braces_depth--
+          canBeKey = true
+        } else if (currly_braces_depth !== 0 && !isKey && canBeKey) {
+          isKey = true
+          canBeKey = false
+          temp += '"'
+        } else if (
+          char === ':' &&
+          isKey &&
+          currly_braces_depth !== 0 &&
+          !canBeKey
+        ) {
+          isKey = false
+          temp += '"'
+        } else if (
+          char === ',' &&
+          !isKey &&
+          currly_braces_depth !== 0 &&
+          !canBeKey
+        ) {
+          canBeKey = true
+        } else if (currly_braces_depth === 0 && !inside_quote && !isCommaDONE) {
+          isCommaDONE = true
+          temp += ','
+        }
+        temp += char
+        // console.log(i, currly_braces_depth, inside_quote, char, isKey, canBeKey);
+        i++
+      }
+      temp = '[' + temp + ']'
+      if (temp.includes(',    ]')) {
+        temp = temp.replace(',    ]', ']')
+      }
+      if (temp.includes('[,')) {
+        temp = temp.replace('[,', '[')
+      }
+      temp = temp.replaceAll("'", '"')
+      temp = temp.replaceAll('" ', '"')
+    }
+    return [[variable_name, index_name], JSON.parse(temp)]
+  }
   const onChange = useCallback(
     (document, content, options) => {
+      /**
+       * @type{string}
+       */
+      const htmll = content.html
+
+      const lines = htmll.split('\n')
+
+      let inside_map_tag = false
+
+      let temp = ''
+      let i = 0
+      while (i < lines.length) {
+        let line = lines[i]
+        // console.log('MEANT NOT TOBE INSIDE <MAP>', line)
+
+        if (!line.includes('<map ') && !inside_map_tag) {
+          temp += line + '\n'
+          console.log(line, i)
+          i++
+          continue
+        } else inside_map_tag = true
+
+        let chars = Array.from(line)
+        const nextLine = () => {
+          i += 1
+          line = lines[i]
+          chars = Array.from(line)
+        }
+        let stack = []
+        for (let k = 0; k < chars.length; k++) {
+          const nextChar = () => {
+            if (chars[k + 1] === undefined && inside_map_tag) {
+              k = 0
+              nextLine()
+              console.log('NEXT LINE CALLED', line)
+            }
+            return chars[++k]
+          }
+          temp += chars[k]
+          stack.push(chars[k])
+          if (stack.join('') === '<map ' && k < chars.length) {
+            temp = temp.replace('<map', '')
+            stack.pop()
+            inside_map_tag = true
+            let paramsStr = ''
+            while (nextChar() !== '>' && k < chars.length) {
+              paramsStr += chars[k]
+            }
+            nextChar() // skipping >
+            const [[var_name, index_name], value] = parseMapParams(paramsStr)
+            let templateStr = ''
+            let stack2 = []
+            while (stack2.join('') !== '</map>' && k < chars.length) {
+              templateStr += chars[k]
+              nextChar()
+              stack2.push(chars[k])
+              if (stack2.length > 6) stack2.shift()
+            }
+            inside_map_tag = false
+            nextChar() // skipping >
+            templateStr = templateStr.replace('</map', '')
+            console.log(templateStr)
+            const transformFn = (value, index) => {
+              if (typeof value === 'string') {
+                let newStr = templateStr.replaceAll(`{${var_name}}`, value)
+                if (index_name) {
+                  newStr = newStr.replaceAll(`{${index_name}}`, index + 1)
+                }
+                return newStr
+              } else {
+                const obj = {
+                  [var_name]: value,
+                }
+                const newStr = tmpl(templateStr, obj)
+                return newStr
+              }
+            }
+            for (let z = 0; z < value.length; z++) {
+              if (value !== undefined) temp += transformFn(value[z], z) + '\n'
+            }
+
+            // everything is right until here, let's handle temp
+            while (k < chars.length) {
+              temp += chars[k]
+              k++
+            }
+          }
+          if (stack.length > 4) stack.shift()
+        }
+        i++
+      }
+      //   console.log(temp)
       setDirty(true)
       if (document === 'html' && !jit) {
         inject({ html: content.html }, { jit })
       } else {
         compile({
-          html: content.html,
+          html: temp,
           css: content.css,
           config: content.config,
           skipIntelliSense: document === 'html',
