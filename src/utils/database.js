@@ -1,6 +1,23 @@
 import { supabase } from '../../lib/supabaseClient'
 import crypto from 'crypto'
 
+export async function sync(item) {
+  console.log('CALLED SYNC SUPABASE ', item)
+  const { data, error } = await supabase
+    .from('playgrounds')
+    .update({
+      content: JSON.stringify({
+        version: item.version,
+        html: item.html,
+        css: item.css,
+        config: item.config,
+      }),
+    })
+    .eq('id', item?.ID)
+  console.log('ENDED SYNC SUPABASE LOADED', data, error)
+  return item
+}
+
 export async function put(item) {
   const id = item?.ID ?? crypto.randomUUID()
   const { data, error } = await supabase

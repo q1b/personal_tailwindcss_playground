@@ -59,6 +59,7 @@ function Pen({
     false,
     1000
   )
+  const [isSyncing, setIsSyncing] = useState(false)
   const [responsiveSize, setResponsiveSize] = useState(
     initialResponsiveSize || DEFAULT_RESPONSIVE_SIZE
   )
@@ -492,6 +493,33 @@ function Pen({
     setActiveTab(initialActiveTab)
   }, [initialActiveTab])
 
+  const onSync = () => {
+    setIsSyncing(true)
+    window
+      .fetch('/api/sync', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          ID: initialContent.ID,
+          html: editorRef.current.getValue('html'),
+          css: editorRef.current.getValue('css'),
+          config: editorRef.current.getValue('config'),
+          version: tailwindVersion,
+        }),
+      })
+      .then((res) => {
+        if (!res.ok) throw res
+        return res
+      })
+      .then((res) => {
+        setIsSyncing(false)
+        return res.json()
+      })
+      .then((json) => console.log('FROM FETCH', json))
+  }
+
   return (
     <>
       <Head>
@@ -554,6 +582,9 @@ function Pen({
                   size.layout === 'vertical' && isLg ? size.current : '100%'
                 }
                 isLoading={isLoading}
+                showSyncOption={initialContent?.ID && dirty && isLg}
+                onSync={onSync}
+                isSyncing={isSyncing}
                 showPreviewTab={!isLg}
                 activeTab={
                   isLg || activePane === 'editor' ? activeTab : 'preview'
