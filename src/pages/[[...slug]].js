@@ -205,6 +205,7 @@ function Pen({
     if (str) {
       let clp = str
       const [front, back] = clp.split(' as ')
+      console.log('----', front, back, '----')
       if (back.includes(',')) {
         ;[variable_name, index_name] = back.split(',')
       } else {
@@ -251,8 +252,8 @@ function Pen({
         i++
       }
       temp = '[' + temp + ']'
-      if (temp.includes(',    ]')) {
-        temp = temp.replace(',    ]', ']')
+      if (/,\s+\]/g.test(temp)) {
+        temp = temp.replace(/,\s+\]/g, ']')
       }
       if (temp.includes('[,')) {
         temp = temp.replace('[,', '[')
@@ -260,6 +261,7 @@ function Pen({
       temp = temp.replaceAll("'", '"')
       temp = temp.replaceAll('" ', '"')
     }
+    console.log('TEMP', temp, variable_name)
     return [[variable_name, index_name], JSON.parse(temp)]
   }
   const onChange = useCallback(
@@ -298,7 +300,6 @@ function Pen({
             if (chars[k + 1] === undefined && inside_map_tag) {
               k = 0
               nextLine()
-              console.log('NEXT LINE CALLED', line)
             }
             return chars[++k]
           }
@@ -312,6 +313,7 @@ function Pen({
             while (nextChar() !== '>' && k < chars.length) {
               paramsStr += chars[k]
             }
+            console.log('PARAMS STR', paramsStr)
             nextChar() // skipping >
             const [[var_name, index_name], value] = parseMapParams(paramsStr)
             let templateStr = ''
@@ -355,7 +357,6 @@ function Pen({
         }
         i++
       }
-      //   console.log(temp)
       setDirty(true)
       if (document === 'html' && !jit) {
         inject({ html: content.html }, { jit })
@@ -686,10 +687,10 @@ export async function getServerSideProps({ params, res, query }) {
   }
 
   try {
-    const { Item: initialContent } = await get({
+    const ITEM = await get({
       ID: params.slug[0],
     })
-
+    const initialContent = ITEM.ITEM
     res.setHeader(
       'cache-control',
       'public, max-age=0, must-revalidate, s-maxage=31536000'

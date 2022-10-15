@@ -3,15 +3,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build:plugins": "if [ -f './.next/serverless/scripts/buildBuiltinPlugins.js' ]; then node ./.next/serverless/scripts/buildBuiltinPlugins.js; else node ./.next/server/scripts/buildBuiltinPlugins.js; fi",
-    "build": "next build && npm run build:plugins",
+    "build": "next build",
     "start": "next start",
     "test": "playwright test"
   },
   "dependencies": {
     "@ctrl/tinycolor": "^3.1.4",
     "@headlessui/react": "^1.4.2",
+    "@heroicons/react": "^2.0.11",
     "@reach/alert": "^0.16.0",
+    "@supabase/supabase-js": "^2.0.0-rc.10",
     "@tailwindcss/aspect-ratio": "0.4.0",
     "@tailwindcss/custom-forms": "0.2.1",
     "@tailwindcss/forms": "0.3.2",
@@ -66,10 +67,12 @@
     "tailwindcss-language-service": "0.0.24-dev.5",
     "tailwindcss-v1": "npm:tailwindcss@1.9.6",
     "tailwindcss-v2": "npm:tailwindcss@2.2.19",
+    "uuid": "^9.0.0",
     "vscode-languageserver-textdocument": "^1.0.1",
     "worker-loader": "^3.0.8"
   },
   "devDependencies": {
-    "@playwright/test": "^1.21.1"
+    "@playwright/test": "^1.21.1",
+    "@types/uuid": "^8.3.4"
   }
 }

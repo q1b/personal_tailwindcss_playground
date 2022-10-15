@@ -1,58 +1,49 @@
-export function put(item) {
-  return new Promise((resolve, reject) => {
-    fetch(process.env.TW_API_URL + '/api/playgrounds/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({
-        uuid: item.ID,
-        version: item.version,
-        html: item.html,
-        css: item.css,
-        config: item.config,
-      }),
-    })
-      .then((response) => {
-        if (!response.ok) throw response
-        return response.json()
-      })
-      .then(({ uuid }) => {
-        resolve({
-          ID: uuid,
+import { supabase } from '../../lib/supabaseClient'
+import crypto from 'crypto'
+
+export async function put(item) {
+  const id = item?.ID ?? crypto.randomUUID()
+  const { data, error } = await supabase
+    .from('playgrounds')
+    .insert(
+      {
+        id,
+        content: JSON.stringify({
           version: item.version,
           html: item.html,
           css: item.css,
           config: item.config,
-        })
-      })
-      .catch((err) => {
-        reject(err)
-      })
-  })
+        }),
+      },
+      { upsert: true }
+    )
+    .single()
+
+  supabase.from('playgrounds').insert(
+    'commits',
+    JSON.stringify({
+      version: item.version,
+      html: item.html,
+      css: item.css,
+      config: item.config,
+      timestamp: new Date(),
+    })
+  )
+
+  console.log('FROM PUT ', data)
+  return {
+    ID: id,
+    ...item,
+  }
 }
 
-export function get(Key) {
-  return new Promise((resolve, reject) => {
-    fetch(process.env.TW_API_URL + '/api/playgrounds/' + Key.ID, {
-      headers: {
-        Accept: 'application/json',
-      },
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw response
-        }
-        return response.json()
-      })
-      .then((data) => {
-        resolve({
-          Item: { ...data, ID: data.uuid },
-        })
-      })
-      .catch((err) => {
-        reject(err)
-      })
-  })
+export async function get(Key) {
+  const { data, error } = await supabase
+    .from('playgrounds')
+    .select()
+    .eq('id', Key?.ID)
+    .single()
+
+  //   console.log('FROM GET REQUEST', data, JSON.parse(data?.content))
+  return { ITEM: { ...JSON.parse(data?.content ?? {}), ID: data.id } }
 }
