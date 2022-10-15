@@ -91,7 +91,6 @@ function createReadFileReplaceLoader(tailwindVersion) {
 }
 
 module.exports = {
-  //   basePath: '/',
   async headers() {
     return [
       {
