@@ -30,7 +30,6 @@ export async function put(item) {
     })
   )
 
-  console.log('FROM PUT ', data)
   return {
     ID: id,
     ...item,
