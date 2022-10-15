@@ -697,10 +697,10 @@ export async function getServerSideProps({ params, res, query }) {
     !params.slug ||
     (params.slug.length === 1 && params.slug[0] === 'index')
   ) {
-    res.setHeader(
-      'cache-control',
-      'public, max-age=0, must-revalidate, s-maxage=31536000'
-    )
+    // res.setHeader(
+    //   'cache-control',
+    //   'public, max-age=0, must-revalidate, s-maxage=31536000'
+    // )
     return {
       props: {
         initialContent: await getDefaultContent(),
@@ -722,10 +722,10 @@ export async function getServerSideProps({ params, res, query }) {
       ID: params.slug[0],
     })
     const initialContent = ITEM.ITEM
-    res.setHeader(
-      'cache-control',
-      'public, max-age=0, must-revalidate, s-maxage=31536000'
-    )
+    // res.setHeader(
+    //   'cache-control',
+    //   'public, max-age=0, must-revalidate, s-maxage=31536000'
+    // )
 
     return {
       props: {
