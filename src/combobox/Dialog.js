@@ -12,7 +12,7 @@ import clsx from 'clsx'
  * }>
  */
 
-export default function DialogComponent({
+export function CommandPalette({
   isOpen,
   closeModal,
   updateConfig,
