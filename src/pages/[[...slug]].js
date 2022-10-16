@@ -1,29 +1,31 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
-import { useIsomorphicLayoutEffect } from '../hooks/useIsomorphicLayoutEffect'
-import Worker from 'worker-loader!../workers/postcss.worker.js'
-import { requestResponse } from '../utils/workers'
-import { debounce } from 'debounce'
-import { Editor } from '../components/Editor'
-import SplitPane from 'react-split-pane'
-import useMedia from 'react-use/lib/useMedia'
-import { validateJavaScript } from '../utils/validateJavaScript'
-import { useDebouncedState } from '../hooks/useDebouncedState'
-import { Preview } from '../components/Preview'
-import Error from 'next/error'
-import { ErrorOverlay } from '../components/ErrorOverlay'
-import Router from 'next/router'
-import { Header } from '../components/Header'
-import { Share } from '../components/Share'
-import { TabBar } from '../components/TabBar'
-import { sizeToObject } from '../utils/size'
-import { getLayoutQueryString } from '../utils/getLayoutQueryString'
-import { get } from '../utils/database'
-import { toValidTailwindVersion } from '../utils/toValidTailwindVersion'
-import Head from 'next/head'
-import { getDefaultContent } from '../utils/getDefaultContent'
-import { extractCss } from '../utils/extractCss'
-import { tmpl } from 'riot-tmpl'
-
+import { debounce } from 'debounce';
+import MagicString from 'magic-string';
+import Error from 'next/error';
+import Head from 'next/head';
+import Router from 'next/router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useWindowEvent } from '@mantine/hooks';
+import SplitPane from 'react-split-pane';
+import useMedia from 'react-use/lib/useMedia';
+import { tmpl } from 'riot-tmpl';
+import Worker from 'worker-loader!../workers/postcss.worker.js';
+import { Editor } from '../components/Editor';
+import { ErrorOverlay } from '../components/ErrorOverlay';
+import { Header } from '../components/Header';
+import { Preview } from '../components/Preview';
+import { Share } from '../components/Share';
+import { TabBar } from '../components/TabBar';
+import { useDebouncedState } from '../hooks/useDebouncedState';
+import { useIsomorphicLayoutEffect } from '../hooks/useIsomorphicLayoutEffect';
+import { get } from '../utils/database';
+import { extractCss } from '../utils/extractCss';
+import { getDefaultContent } from '../utils/getDefaultContent';
+import { getLayoutQueryString } from '../utils/getLayoutQueryString';
+import { sizeToObject } from '../utils/size';
+import { toValidTailwindVersion } from '../utils/toValidTailwindVersion';
+import { validateJavaScript } from '../utils/validateJavaScript';
+import { requestResponse } from '../utils/workers';
+import CommandPalette from "../combobox"
 const HEADER_HEIGHT = 60 - 1
 const TAB_BAR_HEIGHT = 40
 const RESIZER_SIZE = 1
@@ -194,7 +196,6 @@ function Pen({
 
   const compile = useCallback(debounce(compileNow, 200), [inject])
   const parseMapParams = (str) => {
-    console.log(str)
     let temp = ''
     let currly_braces_depth = 0
     let inside_quote = false
@@ -206,7 +207,6 @@ function Pen({
     if (str) {
       let clp = str
       const [front, back] = clp.split(' as ')
-      console.log('----', front, back, '----')
       if (back.includes(',')) {
         ;[variable_name, index_name] = back.split(',')
       } else {
@@ -262,7 +262,6 @@ function Pen({
       temp = temp.replaceAll("'", '"')
       temp = temp.replaceAll('" ', '"')
     }
-    console.log('TEMP', temp, variable_name)
     return [[variable_name, index_name], JSON.parse(temp)]
   }
   const onChange = useCallback(
@@ -284,7 +283,6 @@ function Pen({
 
         if (!line.includes('<map ') && !inside_map_tag) {
           temp += line + '\n'
-          console.log(line, i)
           i++
           continue
         } else inside_map_tag = true
@@ -314,7 +312,6 @@ function Pen({
             while (nextChar() !== '>' && k < chars.length) {
               paramsStr += chars[k]
             }
-            console.log('PARAMS STR', paramsStr)
             nextChar() // skipping >
             const [[var_name, index_name], value] = parseMapParams(paramsStr)
             let templateStr = ''
@@ -328,7 +325,6 @@ function Pen({
             inside_map_tag = false
             nextChar() // skipping >
             templateStr = templateStr.replace('</map', '')
-            console.log(templateStr)
             const transformFn = (value, index) => {
               if (typeof value === 'string') {
                 let newStr = templateStr.replaceAll(`{${var_name}}`, value)
@@ -410,7 +406,7 @@ function Pen({
 
         const newSize =
           (isLg && size.layout !== 'preview') ||
-          (!isLg && activePane === 'editor')
+            (!isLg && activePane === 'editor')
             ? windowSize
             : 0
 
@@ -493,6 +489,18 @@ function Pen({
     setActiveTab(initialActiveTab)
   }, [initialActiveTab])
 
+  const [isOpen, setIsOpen] = useState(false)
+
+  function toggleModal() {
+    setIsOpen(!isOpen)
+  }
+
+  function closeModal() {
+    setIsOpen(false)
+  }
+
+
+
   const onSync = () => {
     setIsSyncing(true)
     window
@@ -520,17 +528,146 @@ function Pen({
       .then((json) => console.log('FROM FETCH', json))
   }
 
+  const [fromCommandPalette, setFromCommandPalette] = useState(() => ({
+    value: false,
+  }))
+
+  const addFont = (cssEmbed, cssRule) => {
+    setFromCommandPalette(() => ({
+      value: 'css',
+      content: {
+        value: cssEmbed
+      }
+    }))
+    const currentModel = editorRef.current.editor.getModel()
+    if (currentModel !== editorRef.current.documents.css.getModel()) setActiveTab(() => 'css')
+
+    setTimeout(() => {
+      updateConfig('add font family', cssRule)
+    })
+  }
+
+  /**
+   * Returns the average of two numbers.
+   *
+   * @remarks
+   * This method is part of the {@link core-library#Statistics | Statistics subsystem}.
+   *
+   * @param {'add plugin'|'add font family'} option - The first input number
+   * @param {string} - The second input number
+   * @returns {void} The arithmetic mean of `x` and `y`
+   */
+  const updateConfig = (
+    option,
+    value,
+  ) => {
+    setFromCommandPalette(() => ({
+      value: 'config',
+      content: {
+        option,
+        value
+      }
+    }))
+    const currentModel = editorRef.current.editor.getModel()
+    if (currentModel !== editorRef.current.documents.config.getModel()) setActiveTab(() => 'config')
+  };
+  
+  useEffect(() => {
+    if (activeTab === 'config' && fromCommandPalette.value === 'config') {
+      const option = fromCommandPalette.content.option;
+      const value = fromCommandPalette.content.value;
+      // const config = editorRef.current?.documents['config']?.getModel()?.getValue();
+      const config = editorRef.current?.editor.getModel()?.getValue();
+      const s = new MagicString(config);
+      if (option === 'add plugin') {
+        const prop = 'plugins';
+        const curr_point = config.search(prop)
+        let point = curr_point + prop.length;
+        if (curr_point !== -1) {
+          while (config.charAt(point) !== '[' && point < config.length) {
+            point++;
+            if (point > config.length) {
+              alert('You should defined plugin as conventions');
+              break;
+            }
+          }
+          s.appendRight(point + 1, `require('${value}'),`);
+          editorRef.current?.documents['config']?.getModel()?.setValue(
+            s.toString()
+          )
+        } else {
+          alert("Define plugin in config")
+        }
+      } else if (option === 'add font family') {
+        const prop1 = 'extend';
+        const prop2 = 'fontFamily';
+        let is_extend_defined = config.search(prop1)
+        let is_fontFamily_defined = config.search(prop2)
+        if (is_extend_defined !== -1 && is_fontFamily_defined === -1) {
+          let point = is_extend_defined + prop1.length
+          while (config.charAt(point) !== '{' && point < config.length) {
+            point++;
+            if (point > config.length) {
+              alert('You should defined extend as conventions');
+              break;
+            }
+          }
+          let indent = '\n        ';
+          let result = ''
+          for(let i =0; i< value.length; i++) {
+            const name = value[i][0];
+            const font_name = `[ '${value[i][1]}', '${value[i][2]}' ],`
+            result += indent + `'${name}'` + ': ' + font_name
+          }
+          s.appendRight(point + 1, `\n      fontFamily: {${result}\n      },`);
+          editorRef.current?.documents['config']?.getModel()?.setValue(
+            s.toString()
+          )
+        } else if (is_fontFamily_defined !== -1) {
+          let point = is_fontFamily_defined + prop2.length
+          while (config.charAt(point) !== '{' && point < config.length) {
+            point++;
+            if (point > config.length) {
+              alert('You should defined extend as conventions');
+              break;
+            }
+          }
+          s.appendRight(point + 1, `\n        ${value},`);
+          editorRef.current?.documents['config']?.getModel()?.setValue(
+            s.toString()
+          )
+        }
+      }
+      setFromCommandPalette(() => ({
+        value: false
+      }))
+    } else if (activeTab === 'css' && fromCommandPalette.value === 'css') {
+      const css = editorRef.current?.editor.getModel()?.getValue();
+      const value = fromCommandPalette.content.value;
+      editorRef.current?.documents['css']?.getModel()?.setValue(
+        value + '\n' + css
+      );
+      setFromCommandPalette(() => ({
+        value: false
+      }))
+    }
+  }, [fromCommandPalette, activeTab])
+
+  useWindowEvent('keydown', function (event) {
+    if(event.key === ';' && event.ctrlKey) {
+      event.preventDefault();
+      toggleModal()
+    }})
+
   return (
     <>
       <Head>
         <meta
           property="og:url"
-          content={`https://play.tailwindcss.com${
-            initialContent.ID ? `/${initialContent.ID}` : ''
-          }`}
+          content={`https://play.tailwindcss.com${initialContent.ID ? `/${initialContent.ID}` : ''}`}
         />
         <meta
-          name="twitter:card"
+          name="twitter:card" 
           content={initialContent.ID ? 'summary' : 'summary_large_image'}
         />
         <meta
@@ -669,6 +806,7 @@ function Pen({
           </>
         ) : null}
       </main>
+      <CommandPalette isOpen={isOpen} closeModal={closeModal} updateConfig={updateConfig} addFont={addFont} /> 
     </>
   )
 }

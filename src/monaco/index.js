@@ -33,6 +33,7 @@ export function createMonacoEditor({
   onChange,
   worker,
   tailwindVersion,
+  
 }) {
   let editor
   let onChangeCallback = onChange
