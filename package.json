@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@ctrl/tinycolor": "^3.1.4",
-    "@headlessui/react": "^1.4.2",
+    "@headlessui/react": "0.0.0-insiders.ab78fbd",
     "@heroicons/react": "^2.0.11",
     "@reach/alert": "^0.16.0",
     "@supabase/supabase-js": "^2.0.0-rc.10",
