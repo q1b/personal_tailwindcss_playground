@@ -25,7 +25,7 @@ import { sizeToObject } from '../utils/size';
 import { toValidTailwindVersion } from '../utils/toValidTailwindVersion';
 import { validateJavaScript } from '../utils/validateJavaScript';
 import { requestResponse } from '../utils/workers';
-import CommandPalette from "../combobox"
+import CommandPalette from "../combobox/Dialog"
 const HEADER_HEIGHT = 60 - 1
 const TAB_BAR_HEIGHT = 40
 const RESIZER_SIZE = 1
